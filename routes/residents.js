@@ -3,16 +3,12 @@ import Resident from "../models/Resident.js";
 
 const router = express.Router();
 
-/**
- * Health check (used to wake Render)
- */
+/** Health check */
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-/**
- * Get all residents (used for initial sync)
- */
+/** Get all residents */
 router.get("/", async (req, res) => {
   try {
     const residents = await Resident.find().sort({ updatedAt: -1 });
@@ -22,27 +18,21 @@ router.get("/", async (req, res) => {
   }
 });
 
-/**
- * Search residents
- * ?section=GH1&building=B&doorNumber=12
- * ?carPlate=12345A
- * ?fullName=John
- */
+/** Search residents */
 router.get("/search", async (req, res) => {
   try {
-    const { section, building, doorNumber, carPlate, fullName } = req.query;
+    const { section, building, door, carPlate, fullName, numeroDeMacaron } = req.query;
 
     let query = {};
 
     if (section) query.section = section;
-    if (building && doorNumber) {
+    if (building && door) {
       query.building = building;
-      query.doorNumber = doorNumber;
+      query.door = door;
     }
     if (carPlate) query.carPlate = carPlate;
-    if (fullName) {
-      query.fullName = { $regex: fullName, $options: "i" };
-    }
+    if (fullName) query.fullName = { $regex: fullName, $options: "i" };
+    if (numeroDeMacaron) query.numeroDeMacaron = numeroDeMacaron;
 
     const residents = await Resident.find(query);
     res.json(residents);
@@ -51,24 +41,20 @@ router.get("/search", async (req, res) => {
   }
 });
 
-/**
- * Create resident
- */
+/** Create resident */
 router.post("/", async (req, res) => {
   try {
     const resident = await Resident.create(req.body);
     res.status(201).json(resident);
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(400).json({ error: "Car plate already exists" });
+      return res.status(400).json({ error: "Car plate or numero de macaron already exists" });
     }
     res.status(400).json({ error: "Invalid resident data" });
   }
 });
 
-/**
- * Update resident
- */
+/** Update resident */
 router.put("/:id", async (req, res) => {
   try {
     const resident = await Resident.findByIdAndUpdate(
@@ -87,9 +73,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-/**
- * Delete resident (optional)
- */
+/** Delete resident */
 router.delete("/:id", async (req, res) => {
   try {
     await Resident.findByIdAndDelete(req.params.id);
