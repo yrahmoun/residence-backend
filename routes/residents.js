@@ -83,4 +83,34 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+/** Sync residents (bulk insert, ignore duplicates) */
+router.post("/sync", async (req, res) => {
+  try {
+    const residents = req.body;
+
+    if (!Array.isArray(residents)) {
+      return res.status(400).json({ error: "Invalid data format" });
+    }
+
+    const result = await Resident.insertMany(residents, {
+      ordered: false // continue even if duplicates exist
+    });
+
+    res.json({
+      insertedCount: result.length,
+      insertedResidents: result
+    });
+  } catch (err) {
+    // Mongo duplicate key error is expected during sync
+    if (err.code === 11000 || err.writeErrors) {
+      return res.json({
+        insertedCount: err.insertedDocs?.length || 0,
+        insertedResidents: err.insertedDocs || []
+      });
+    }
+
+    res.status(500).json({ error: "Sync failed" });
+  }
+});
+
 export default router;
